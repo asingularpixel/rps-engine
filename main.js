@@ -9,9 +9,19 @@
 const maxPatternLength = 5;
 
 /**
- * Chance for random generator to be used. TODO: Obsolete with new engine, delete
+ * Chance for random generator to be used.
  */
 const randomChance = 0.05;
+
+/**
+ * Chance for the meta selector to pick a random meta. TODO: Move from this to making metaEfficacy the base for random selection instead of just picking highest one
+ */
+const randomMetaChance = 0.1;
+
+/**
+ * TODO: Implement this please
+ */
+const metaDecayFactor = 0.95;
 
 const Choice = {
     Rock: 0,
@@ -20,9 +30,26 @@ const Choice = {
 }
 
 /**
+ * How to handle each meta-strategy.
+ */
+const metaProtocol = [
+    p0,
+    p1,
+    p2,
+    pp0,
+    pp1,
+    pp2
+];
+
+/**
  * Scores of how each meta has performed in the game.
  */
 let metaEfficacy = [0, 0, 0, 0, 0, 0];
+
+/**
+ * Index of current meta we are using.
+ */
+let metaIndex = null;
 
 /**
  * What the player has previously played.
@@ -35,6 +62,16 @@ let playerHistory = [];
 let playerPatterns = [];
 
 /**
+ * What the cpu has previously played.
+ */
+ let cpuHistory = [];
+
+ /**
+  * All of the detected patterns that the cpu has.
+  */
+ let cpuPatterns = [];
+
+/**
  * The number of matches that have been played in the game.
  */
 let matchCounter = 0;
@@ -43,6 +80,16 @@ let matchCounter = 0;
  * The document node that handles the debug text in the top-left corner.
  */
 let debug;
+
+/**
+ * The document node that contains the indicators for game outcome history.
+ */
+let outcomeBar;
+
+/**
+ * Giant display text that shows outcome.
+ */
+let jumbotron;
 
 // false == p1 win
 // true  == p2 win
@@ -64,7 +111,11 @@ function determineWin(p1, p2) {
     return undefined;
 }
 
-// min-inclusive, max-exclusive
+/**
+ * Picks a random integer between the provided values (max-exclusive).
+ * @param {Number} max Maximum number (exclusive).
+ * @param {Number} min Minimum number (inclusive, defaults to 0).
+ */
 function randomInt(max, min = 0) {
     return Math.floor(Math.random() * (max - min)) + min;
 }
@@ -73,10 +124,12 @@ function randomInt(max, min = 0) {
 function handleInput(playerInput) {
     let cpuInput;
     
-    // Determine the cpu's move
+    // Determine the cpu's move if it isn't the first match
     if (matchCounter > 0) {
+        debugMessage("Determining CPU choice... (this might take a second)");
         cpuInput = determineCpuMove();
     } else {
+        debugMessage("Determining CPU choice... (this won't take a second)");
         cpuInput = randomInt(3);
     }
     
@@ -87,94 +140,169 @@ function handleInput(playerInput) {
     playerHistory.unshift(playerInput);
     cpuHistory.unshift(cpuInput);
     if (matchCounter > 0) {
+        debugMessage("Taking notes...");
         let stack = [];
         
         for (let i = 1; i < playerHistory.length && i < maxPatternLength + 1; i++) {
             stack.push(playerHistory[i]);
-            
-            playerPatterns.push({
-                indicator: stack.slice(),
-                indication: playerHistory[0],
-                playHistory: [matchCounter]
+
+            let twinSearch = playerPatterns.find((pattern) => {
+                return pattern.indicator.length === stack.length && arraysEqual(pattern.indicator, stack) && playerHistory[0] === pattern.indication;
             });
+            
+            if (twinSearch === undefined) {
+                playerPatterns.push({
+                    /**
+                     * The array that defines what to look for.
+                     */
+                    indicator: stack.slice(),
+                    /**
+                     * What the pattern means for what's happening next.
+                     */
+                    indication: playerHistory[0],
+                    playHistory: 1
+                });
+            } else {
+                twinSearch.playHistory++;
+            }
         }
         
         stack = [];
+
+        twinSearch = cpuPatterns.find((pattern) => {
+            return pattern.indicator.length === stack.length && arraysEqual(pattern.indicator, stack) && cpuHistory[0] === pattern.indication;
+        });
         
-        for (let i = 1; i < cpuHistory.length && i < maxPatternLength + 1; i++) {
-            stack.push(cpuHistory[i]);
-            
-            cpuPatterns.push({
-                indicator: stack.slice(),
-                indication: playerHistory[0],
-                playHistory: [matchCounter]
-            });
+        if (twinSearch === undefined) {
+            for (let i = 1; i < cpuHistory.length && i < maxPatternLength + 1; i++) {
+                stack.push(cpuHistory[i]);
+                
+                cpuPatterns.push({
+                    indicator: stack.slice(),
+                    indication: playerHistory[0],
+                    playHistory: 1
+                });
+            }
+        } else {
+            twinSearch.playHistory++;
+        }
+
+        if (matchResult !== null) {
+            matchResult ? metaEfficacy[metaIndex]++ : metaEfficacy[metaIndex]--;
         }
     }
     
     // Resolve a string to describe the match's result
-    let output;
+    debugMessage("Determining winner...");
     if (matchResult === null) {
-        output = "Tie";
+        debugTimeoutMessage("Tie", "Waiting for user input...", 1000);
+        displayMessage(`${choiceToString(playerInput)} vs. ${choiceToString(cpuInput)}<br>You tied.`);
     } else if (matchResult === true) {
-        output = "They won..";
+        debugTimeoutMessage("CPU wins", "Waiting for user input...", 1000);
+        displayMessage(`${choiceToString(playerInput)} vs. ${choiceToString(cpuInput)}<br>You lost..`);
     } else if (matchResult === false) {
-        output = "You won!";
+        debugTimeoutMessage("Player wins", "Waiting for user input...", 1000);
+        displayMessage(`${choiceToString(playerInput)} vs. ${choiceToString(cpuInput)}<br>You won!`);
     } else if (matchResult === undefined) {
         console.warn("handleInput: Couldn't resolve win string (determineWin() === undefined)");
-        output = "[Error]";
+        debugTimeoutMessage("Error occurred", "Waiting for user input...", 1000);
+        displayMessage(`${choiceToString(playerInput)} vs. ${choiceToString(cpuInput)}<br>Something odd happened.`);
     } else {
         console.warn("handleInput: Couldn't resolve win string (reached fallback)");
-        output = "[Error]";
+        debugTimeoutMessage("What is even happening right now man", "Waiting for user input...", 2000);
+        displayMessage(`${choiceToString(playerInput)} vs. ${choiceToString(cpuInput)}<br>Something odd happened.`);
+        matchResult = undefined;
     }
+
+    pushOutcome(matchResult);
     
     // Tell the user the result of the match
     // TODO: Make UI for this instead
-    console.log(`${choiceToString(playerInput)} vs. ${choiceToString(cpuInput)} : ${output}`);
+    console.log(`${choiceToString(playerInput)} vs. ${choiceToString(cpuInput)} : ${matchResult}`);
     
     // Increment matchCounter
     matchCounter++;
 }
 
 function determineCpuMove() {
-    
+    // Decide which meta we use
+    if (Math.random() < randomMetaChance) {
+        metaIndex = randomInt(metaEfficacy.length);
+    } else {
+        let winnerValue = 0;
+        metaIndex = 0;
+
+        metaEfficacy.forEach((n, i) => {
+            if (winnerValue < n) winnerIndex = i; winnerValue = n;
+        });
+    }
+
+    console.log(`determineCpuMove: Using meta ${metaIndex}.`);
+
+    // Decide which predictor we use
+    return metaProtocol[metaIndex]((Math.random() < randomChance) ? randomPredict : historyPredict);
 }
 
-// These are probably just going to get minified into a logic chain in determineCpuMove
 // #region Meta Strategies
 
-// "Naive Application"
-// Play to beat predicted move
+/**
+ * "Naive Application"
+ * 
+ * Play to beat predicted move
+ * @param {Function} p Reference to predictor function
+ * @returns {Choice.Rock | Choice.Paper | Choice.Scissors} What choice the CPU should make
+ */
 function p0(p) {
-    return rotateChoice(p);
+    return rotateChoice(p(playerPatterns, playerHistory));
 }
 
-// "Defeat Second-Guessing"
-// Assume your opponent thinks you use {@link p0}
+
+/**
+ * "Defeat Second-Guessing"
+ * Assume your opponent thinks you use {@link p0}
+ * @param {Function} p Reference to predictor function
+ * @returns {Choice.Rock | Choice.Paper | Choice.Scissors} What choice the CPU should make
+ */
 function p1(p) {
-    return p;
+    return p(playerPatterns, playerHistory);
 }
 
-// "Defeat Triple-Guessing"
-// Assume your opponent thinks you use {@link p1}
+/**
+ * "Defeat Triple-Guessing"
+ * Assume your opponent thinks you use {@link p1}
+ * @param {Function} p Reference to predictor function
+ * @returns {Choice.Rock | Choice.Paper | Choice.Scissors} What choice the CPU should make
+ */
 function p2(p) {
-    return rotateChoice(p, false);
+    return rotateChoice(p(playerPatterns, playerHistory), false);
 }
 
-// "Second-Guess Opponent"
-// Use your own prediction to predict what they'd do or something like that
+/**
+ * "Second-Guess Opponent"
+ * Use your own prediction to predict what they'd do or something like that
+ * @param {Function} p Reference to predictor function
+ * @returns {Choice.Rock | Choice.Paper | Choice.Scissors} What choice the CPU should make
+ */
 function pp0(p) {
-    return rotateChoice(p);
+    return rotateChoice(p(cpuPatterns, cpuHistory));
 }
 
-// This is a guess on how it works because I'm stupid
+/**
+ * This is a guess on how it works because I'm stupid
+ * @param {Function} p Reference to predictor function
+ * @returns {Choice.Rock | Choice.Paper | Choice.Scissors} What choice the CPU should make
+ */
 function pp1(p) {
-    return p;
+    return p(cpuPatterns, cpuHistory);
 }
 
-// This is also a guess on how it works
+/**
+ * This is also a guess on how it works
+ * @param {Function} p Reference to predictor function
+ * @returns {Choice.Rock | Choice.Paper | Choice.Scissors} What choice the CPU should make
+ */
 function pp2(p) {
-    return rotateChoice(p, false);
+    return rotateChoice(p(cpuPatterns, cpuHistory), false);
 }
 
 //#endregion Meta Strategies
@@ -183,7 +311,9 @@ function pp2(p) {
 
 // "Predict" a completely random thing because sure
 function randomPredict() {
-    return randomInt(3);
+    let yep = randomInt(3);
+    console.log(`randomPredict: Predicted ${yep}`);
+    return yep;
 }
 
 /**
@@ -200,7 +330,7 @@ function randomPredict() {
  * E - do
  * 
  * R - this
- * @param {Array<{indication:Array<Number>, indicator:Number, playHistory:Array<Number>}>} patternArray uhhh the pattern array you silly goose
+ * @param {Array<{indication:Number, indicator:Array<Number>, playHistory:Number}>} patternArray uhhh the pattern array you silly goose
  * @param {Array<Number>} historyArray i want to perish
  */
 function historyPredict(patternArray, historyArray) {
@@ -208,13 +338,20 @@ function historyPredict(patternArray, historyArray) {
     let winLength = 0;
 
     patternArray.forEach((pattern, i) => {
-        if (arraysEqual(pattern.indication, historyArray.slice(0, pattern.indication.length))) {
-            if (pattern.indication.length > winLength) {
+        if (arraysEqual(pattern.indicator, historyArray.slice(0, pattern.indicator.length))) {
+            if (pattern.indicator.length > winLength) {
                 winIndex = i;
-                winLength = pattern.indication.length;
+                winLength = pattern.indicator.length;
             }
         }
     });
+
+    let result = (winIndex === null) ? randomPredict() : patternArray[winIndex].indication;
+
+    // shut up
+    console.log(`historyPredict: Predicted ${result}`);
+
+    return result;
 }
 
 // #endregion Prediction Strategies
@@ -223,16 +360,15 @@ function historyPredict(patternArray, historyArray) {
 /**
  * "Rotates" choice to be advantageous or disadvantageous
  * @param {number} c Choice to rotate
- * @param {boolean} dir Rotate to advantageous?
+ * @param {boolean} dir Rotate to advantageous (default = true)?
  * @returns Rotated choice
  */
-function rotateChoice(c, dir) {
+function rotateChoice(c, dir = true) {
     if (dir) {
-        // no, I didn't think of modding this, it was from the iocaine source code
         c = (c + 1) % 3;
     } else {
-        // no, I didn't think of modding this, it was from the iocaine source code
-        c = (c - 1) % 3;
+        c--;
+        if (c < 0) c = 2;
     }
 
     return c;
@@ -259,18 +395,10 @@ function choiceToString(c) {
 
 // Compare function for the Array.sort() parameters.
 function patternCompare(a, b) {
-    let aChoice = 0;
-    let bChoice = 0;
+    let aChoice = playHistory;
+    let bChoice = playHistory;
     
-    a.playHistory.forEach(function(n) {
-        aChoice += n;
-    });
-    
-    b.playHistory.forEach(function(n) {
-        bChoice += n;
-    });
-    
-    return (aChoice / a.playHistory.length) - (bChoice / b.playHistory.length);
+    return (aChoice / a.playHistory) - (bChoice / b.playHistory);
 }
 
 /**
@@ -281,6 +409,44 @@ function patternCompare(a, b) {
  */
 function arraysEqual(a, b) {
     return a.every((val, idx) => val === b[idx])
+}
+
+/**
+ * 
+ * @param {Boolean | null | undefined} result Result to push.
+ */
+function pushOutcome(result) {
+    let el = document.createElement("div");
+    
+    switch (result) {
+        case true:
+            el.classList.add("loss");
+            break;
+    
+        case false:
+            el.classList.add("win");
+            break;
+        case null:
+            el.classList.add("tie");
+            break;
+        case undefined:
+            el.classList.add("undecided");
+            break;
+        default:
+            el.classList.add("undecided");
+            console.warn("pushOutcome: Reached fallback, pushing \"undecided\"");
+            break;
+    }
+
+    outcomeBar.appendChild(el);
+}
+
+/**
+ * 
+ * @param {String} text Message to display.
+ */
+function displayMessage(text) {
+    jumbotron.innerHTML = text;
 }
 
 function debugMessage(text = "") {
@@ -300,6 +466,10 @@ function debugTimeoutMessage(text = "", afterText = "", time = 1000) {
 
 // Adds event listeners for clicking the buttons
 window.addEventListener("load", function() {
+    outcomeBar = document.getElementById("outcome-bar");
+    jumbotron = document.getElementById("jumbotron");
+    debug = document.getElementById("debug-readout");
+
     document.getElementById("select-rock").addEventListener("click", function() {
         handleInput(Choice.Rock);
     });
@@ -312,7 +482,6 @@ window.addEventListener("load", function() {
         handleInput(Choice.Scissors);
     });
     
-    debug = document.getElementById("debug-readout");
     debugTimeoutMessage("JS has taken control!", "Waiting for user input...", 750);
 });
 

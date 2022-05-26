@@ -15,6 +15,8 @@ body {
     text-align: center;
     bottom: 10px;
     width: 100%;
+    display: flex;
+    flex-direction: row;
     
     cursor: default;
 }
@@ -28,10 +30,25 @@ body {
     cursor: pointer;
     width: 75px;
     text-align: center;
+    order: 1;
+    flex-grow: 1;
+    margin-right: 7px;
+    height: 15vh;
+    font-size: 20px;
+}
+
+#selection-bar > button:first-child {
+    margin-left: 7px;
+}
+
+#selection-bar > button:hover {
+    transition: background 0.15s ease-out;
+    background-color: rgba(255, 255, 255, 0.175);
 }
 
 /* Active (when clicked) selector */
 #selection-bar > button:active {
+    transition: none;
     background-color: rgba(255, 255, 255, 0.15);
 }
 
@@ -40,18 +57,19 @@ body {
     position: absolute;
     width: 100%;
     text-align: center;
-    bottom: 35px;
+    bottom: calc(15vh + 15px);
 }
 
 /* Generic indicator selector */
 #outcome-bar > div {
     height: 5px;
-    width: 15px;
+    width: 20px;
     
     display: inline-block;
     
     border: solid 1px transparent;
     border-radius: 10px;
+    margin-left: 3px;
 }
 
 /* Win indicator */
@@ -74,8 +92,24 @@ body {
     border: solid #939393 1px;
 }
 
-#debug-readout {
+#debug-readout, #credits-button {
     color: rgb(237, 237, 237, 0.3);
     font-size: 12px;
     padding: 1px 3px;
+}
+
+#credits-button {
+    position: absolute;
+    right: 3px;
+    text-decoration: underline;
+}
+
+#jumbotron {
+    position: absolute;
+    top: 40vh;
+    left: 0;
+    width: 100%;
+    text-align: center;
+
+    font-size: 45px;
 }
