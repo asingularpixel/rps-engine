@@ -26,6 +26,9 @@ const randomMetaChance = 0.1;
  */
 const metaDecayFactor = 1 - (1/5);
 
+/**
+ * An "enum" that contains all the choices a player/cpu can make.
+ */
 const Choice = {
     Rock: 0,
     Paper: 1,
