@@ -1,0 +1,81 @@
+/* Take a guess */
+body {
+    background-color: #121212;
+    margin: 0;
+    
+    font-family: sans-serif;
+    color: #ededed;
+    
+    user-select: none;
+}
+
+/* Select button container */
+#selection-bar {
+    position: absolute;
+    text-align: center;
+    bottom: 10px;
+    width: 100%;
+    
+    cursor: default;
+}
+
+/* Select buttons in container */
+#selection-bar > button {
+    color: rgb(237, 237, 237, 0.8);
+    background-color: rgba(255, 255, 255, 0.2);
+    border: solid 1px transparent;
+    border-radius: 5px;
+    cursor: pointer;
+    width: 75px;
+    text-align: center;
+}
+
+/* Active (when clicked) selector */
+#selection-bar > button:active {
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Outcome indicator bar */
+#outcome-bar {
+    position: absolute;
+    width: 100%;
+    text-align: center;
+    bottom: 35px;
+}
+
+/* Generic indicator selector */
+#outcome-bar > div {
+    height: 5px;
+    width: 15px;
+    
+    display: inline-block;
+    
+    border: solid 1px transparent;
+    border-radius: 10px;
+}
+
+/* Win indicator */
+#outcome-bar > .win {
+    background-color: #30b258;
+}
+
+/* Loss indicator */
+#outcome-bar > .loss {
+    background-color: #ff3838;
+}
+
+/* Tie indicator */
+#outcome-bar > .tie {
+    background-color: #939393;
+}
+
+/* Undetermined indicator */
+#outcome-bar > .undetermined {
+    border: solid #939393 1px;
+}
+
+#debug-readout {
+    color: rgb(237, 237, 237, 0.3);
+    font-size: 12px;
+    padding: 1px 3px;
+}
