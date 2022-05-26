@@ -3,6 +3,8 @@
 
 // ALSOCOULDDO: Not that bc I have like two days to do this l a u g h   o u t   l o u d
 
+// TODO: It randomly got meta 4 at start somehow figure out why please
+
 /**
  * Maximum length that a pattern can be.
  */
@@ -21,7 +23,7 @@ const randomMetaChance = 0.1;
 /**
  * TODO: Implement this please
  */
-const metaDecayFactor = 0.95;
+const metaDecayFactor = 1 - (1/5);
 
 const Choice = {
     Rock: 0,
@@ -189,6 +191,7 @@ function handleInput(playerInput) {
 
         if (matchResult !== null) {
             matchResult ? metaEfficacy[metaIndex]++ : metaEfficacy[metaIndex]--;
+            metaEfficacy.forEach((meta) => meta *= metaDecayFactor);
         }
     }
     
@@ -422,7 +425,6 @@ function pushOutcome(result) {
         case true:
             el.classList.add("loss");
             break;
-    
         case false:
             el.classList.add("win");
             break;
