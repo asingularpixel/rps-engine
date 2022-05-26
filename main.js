@@ -21,7 +21,8 @@ const randomChance = 0.05;
 const randomMetaChance = 0.1;
 
 /**
- * TODO: Implement this please
+ * The thing that each meta is multiplied all the time to do a cool.
+ * I'm pretty sure this is implemented now?
  */
 const metaDecayFactor = 1 - (1/5);
 
