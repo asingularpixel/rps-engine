@@ -27,18 +27,19 @@ const randomMetaChance = 0.1;
 const metaDecayFactor = 1 - (1/5);
 
 /**
- * An "enum" that contains all the choices a player/cpu can make.
+ * All the choices a player/cpu can make.
  */
-const Choice = {
-    Rock: 0,
-    Paper: 1,
-    Scissors: 2
+enum Choice {
+    Rock,
+    Paper,
+    Scissors
 }
 
 /**
  * How to handle each meta-strategy.
  */
-const metaProtocol = [
+
+const metaProtocol : Function[] = [
     p0,
     p1,
     p2,
@@ -48,54 +49,76 @@ const metaProtocol = [
 ];
 
 /**
+ * A detected pattern of a series of moves played in the past.
+ */
+interface Pattern {
+    /**
+     * The preceding pattern that indicates a move.
+     */
+    indicator : number[],
+
+    /**
+     * The move the pattern indicates will occur.
+     */
+    indication : number,
+
+    /**
+     * A number showing how relevant the pattern is
+     * @todo Make this name better
+     */
+    playHistory : number
+}
+
+/**
  * Scores of how each meta has performed in the game.
  */
-let metaEfficacy = [0, 0, 0, 0, 0, 0];
+let metaEfficacy : number[] = [0, 0, 0, 0, 0, 0];
 
 /**
  * Index of current meta we are using.
  */
-let metaIndex = null;
+let metaIndex : number | null = null;
 
 /**
  * What the player has previously played.
  */
-let playerHistory = [];
+let playerHistory : number[] = [];
 
 /**
  * All of the detected patterns that the player has.
  */
-let playerPatterns = [];
+let playerPatterns : Pattern[] = [];
 
 /**
  * What the cpu has previously played.
  */
- let cpuHistory = [];
+ let cpuHistory : number[] = [];
 
  /**
   * All of the detected patterns that the cpu has.
   */
- let cpuPatterns = [];
+ let cpuPatterns : Array<Pattern> = [];
 
 /**
  * The number of matches that have been played in the game.
  */
-let matchCounter = 0;
+let matchCounter : number = 0;
 
 /**
  * The document node that handles the debug text in the top-left corner.
  */
-let debug;
+let debug : HTMLSpanElement;
 
 /**
  * The document node that contains the indicators for game outcome history.
  */
-let outcomeBar;
+// Defining as HTMLDivElement breaks things
+let outcomeBar : HTMLElement;
 
 /**
  * Giant display text that shows outcome.
  */
-let jumbotron;
+let jumbotron : HTMLSpanElement;
 
 // false == p1 win
 // true  == p2 win
@@ -148,23 +171,18 @@ function handleInput(playerInput) {
     if (matchCounter > 0) {
         debugMessage("Taking notes...");
         let stack = [];
+        let twinSearch;
         
         for (let i = 1; i < playerHistory.length && i < maxPatternLength + 1; i++) {
             stack.push(playerHistory[i]);
 
-            let twinSearch = playerPatterns.find((pattern) => {
+            twinSearch = playerPatterns.find((pattern) => {
                 return pattern.indicator.length === stack.length && arraysEqual(pattern.indicator, stack) && playerHistory[0] === pattern.indication;
             });
             
             if (twinSearch === undefined) {
                 playerPatterns.push({
-                    /**
-                     * The array that defines what to look for.
-                     */
                     indicator: stack.slice(),
-                    /**
-                     * What the pattern means for what's happening next.
-                     */
                     indication: playerHistory[0],
                     playHistory: 1
                 });
@@ -232,6 +250,8 @@ function handleInput(playerInput) {
 }
 
 function determineCpuMove() {
+    let winnerIndex;
+
     // Decide which meta we use
     if (Math.random() < randomMetaChance) {
         metaIndex = randomInt(metaEfficacy.length);
@@ -256,10 +276,10 @@ function determineCpuMove() {
  * "Naive Application"
  * 
  * Play to beat predicted move
- * @param {Function} p Reference to predictor function
- * @returns {Choice.Rock | Choice.Paper | Choice.Scissors} What choice the CPU should make
+ * @param p Reference to predictor function
+ * @returns What choice the CPU should make
  */
-function p0(p) {
+function p0(p : Function) : Choice {
     return rotateChoice(p(playerPatterns, playerHistory));
 }
 
@@ -267,48 +287,48 @@ function p0(p) {
 /**
  * "Defeat Second-Guessing"
  * Assume your opponent thinks you use {@link p0}
- * @param {Function} p Reference to predictor function
- * @returns {Choice.Rock | Choice.Paper | Choice.Scissors} What choice the CPU should make
+ * @param p Reference to predictor function
+ * @returns What choice the CPU should make
  */
-function p1(p) {
+function p1(p: Function) : Choice {
     return p(playerPatterns, playerHistory);
 }
 
 /**
  * "Defeat Triple-Guessing"
  * Assume your opponent thinks you use {@link p1}
- * @param {Function} p Reference to predictor function
- * @returns {Choice.Rock | Choice.Paper | Choice.Scissors} What choice the CPU should make
+ * @param p Reference to predictor function
+ * @returns What choice the CPU should make
  */
-function p2(p) {
+function p2(p: Function) : Choice {
     return rotateChoice(p(playerPatterns, playerHistory), false);
 }
 
 /**
  * "Second-Guess Opponent"
  * Use your own prediction to predict what they'd do or something like that
- * @param {Function} p Reference to predictor function
- * @returns {Choice.Rock | Choice.Paper | Choice.Scissors} What choice the CPU should make
+ * @param p Reference to predictor function
+ * @returns What choice the CPU should make
  */
-function pp0(p) {
+function pp0(p: Function) : Choice {
     return rotateChoice(p(cpuPatterns, cpuHistory));
 }
 
 /**
  * This is a guess on how it works because I'm stupid
- * @param {Function} p Reference to predictor function
- * @returns {Choice.Rock | Choice.Paper | Choice.Scissors} What choice the CPU should make
+ * @param p Reference to predictor function
+ * @returns What choice the CPU should make
  */
-function pp1(p) {
+function pp1(p: Function) : Choice {
     return p(cpuPatterns, cpuHistory);
 }
 
 /**
  * This is also a guess on how it works
- * @param {Function} p Reference to predictor function
- * @returns {Choice.Rock | Choice.Paper | Choice.Scissors} What choice the CPU should make
+ * @param p Reference to predictor function
+ * @returns What choice the CPU should make
  */
-function pp2(p) {
+function pp2(p: Function) : Choice {
     return rotateChoice(p(cpuPatterns, cpuHistory), false);
 }
 
@@ -402,8 +422,8 @@ function choiceToString(c) {
 
 // Compare function for the Array.sort() parameters.
 function patternCompare(a, b) {
-    let aChoice = playHistory;
-    let bChoice = playHistory;
+    let aChoice = a.playHistory;
+    let bChoice = b.playHistory;
     
     return (aChoice / a.playHistory) - (bChoice / b.playHistory);
 }
@@ -460,7 +480,7 @@ function debugMessage(text = "") {
 }
 
 function debugTimeoutMessage(text = "", afterText = "", time = 1000) {
-    if (this.timeoutId) clearTimeout(timeoutId);
+    if (this.timeoutId) clearTimeout(this.timeoutId);
     
     this.timeoutId = setTimeout(function() {
         debugMessage(afterText);
