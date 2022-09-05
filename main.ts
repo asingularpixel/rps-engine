@@ -112,7 +112,7 @@ let debug : HTMLSpanElement;
 /**
  * The document node that contains the indicators for game outcome history.
  */
-// Defining as HTMLDivElement breaks things
+// FIXME: Defining as HTMLDivElement breaks things
 let outcomeBar : HTMLElement;
 
 /**
