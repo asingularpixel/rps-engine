@@ -1,9 +1,9 @@
 // COULDDO: Put CPU decision logic in a promise, run after showing result, and await
 // after choice has been made for slightly snappier UX with larger datasets
 
-// ALSOCOULDDO: Not that bc I have like two days to do this l a u g h   o u t   l o u d
+// TODO: It randomly got meta 4 at start somehow figure out why please (wait hold on isn't there a chance to randomly select one?? tf was i on when i wrote this?)
 
-// TODO: It randomly got meta 4 at start somehow figure out why please
+// TODO: Rewrite documentation to be more professional / not nonsensical and lazy
 
 /**
  * Maximum length that a pattern can be.
@@ -33,6 +33,16 @@ enum Choice {
     Rock,
     Paper,
     Scissors
+}
+
+/**
+ * All possible outcomes for a match.
+ */
+enum Outcome {
+    PlayerWin,
+    CpuWin,
+    Tie,
+    Error
 }
 
 /**
@@ -82,7 +92,7 @@ let metaIndex : number | null = null;
 /**
  * What the player has previously played.
  */
-let playerHistory : number[] = [];
+let playerHistory : Choice[] = [];
 
 /**
  * All of the detected patterns that the player has.
@@ -92,12 +102,12 @@ let playerPatterns : Pattern[] = [];
 /**
  * What the cpu has previously played.
  */
- let cpuHistory : number[] = [];
+ let cpuHistory : Choice[] = [];
 
  /**
   * All of the detected patterns that the cpu has.
   */
- let cpuPatterns : Array<Pattern> = [];
+ let cpuPatterns : Pattern[] = [];
 
 /**
  * The number of matches that have been played in the game.
@@ -123,29 +133,29 @@ let jumbotron : HTMLSpanElement;
 // false == p1 win
 // true  == p2 win
 // null  == tie
-function determineWin(p1, p2) {
+function determineWin(p1 : Choice, p2 : Choice) : Outcome {
     if (p1 == p2) {
-        return null;
+        return Outcome.Tie;
     } else if (p1 == Choice.Rock && p2 == Choice.Scissors) {
-        return false;
+        return Outcome.PlayerWin;
     } else if (p2 == Choice.Rock && p1 == Choice.Scissors) {
-        return true;
+        return Outcome.CpuWin;
     } else if (p2 < p1) {
-        return false;
+        return Outcome.PlayerWin;
     } else if (p1 < p2) {
-        return true;
+        return Outcome.CpuWin;
     }
     
     console.warn("determineWin: Couldn't resolve game!");
-    return undefined;
+    return Outcome.Error;
 }
 
 /**
  * Picks a random integer between the provided values (max-exclusive).
- * @param {Number} max Maximum number (exclusive).
- * @param {Number} min Minimum number (inclusive, defaults to 0).
+ * @param max Maximum number (exclusive).
+ * @param min Minimum number (inclusive, defaults to 0).
  */
-function randomInt(max, min = 0) {
+function randomInt(max : number, min : number = 0) {
     return Math.floor(Math.random() * (max - min)) + min;
 }
 
@@ -211,24 +221,25 @@ function handleInput(playerInput) {
             twinSearch.playHistory++;
         }
 
-        if (matchResult !== null) {
+        if (matchResult !== Outcome.Tie) {
             matchResult ? metaEfficacy[metaIndex]++ : metaEfficacy[metaIndex]--;
             metaEfficacy.forEach((meta) => meta *= metaDecayFactor);
         }
     }
     
     // Resolve a string to describe the match's result
+    // TODO: Make this a switch-case, or better, reduce repeated code
     debugMessage("Determining winner...");
-    if (matchResult === null) {
+    if (matchResult === Outcome.Tie) {
         debugTimeoutMessage("Tie", "Waiting for user input...", 1000);
         displayMessage(`${choiceToString(playerInput)} vs. ${choiceToString(cpuInput)}<br>You tied.`);
-    } else if (matchResult === true) {
+    } else if (matchResult === Outcome.CpuWin) {
         debugTimeoutMessage("CPU wins", "Waiting for user input...", 1000);
         displayMessage(`${choiceToString(playerInput)} vs. ${choiceToString(cpuInput)}<br>You lost..`);
-    } else if (matchResult === false) {
+    } else if (matchResult === Outcome.PlayerWin) {
         debugTimeoutMessage("Player wins", "Waiting for user input...", 1000);
         displayMessage(`${choiceToString(playerInput)} vs. ${choiceToString(cpuInput)}<br>You won!`);
-    } else if (matchResult === undefined) {
+    } else if (matchResult === Outcome.Error) {
         console.warn("handleInput: Couldn't resolve win string (determineWin() === undefined)");
         debugTimeoutMessage("Error occurred", "Waiting for user input...", 1000);
         displayMessage(`${choiceToString(playerInput)} vs. ${choiceToString(cpuInput)}<br>Something odd happened.`);
@@ -282,7 +293,6 @@ function determineCpuMove() {
 function p0(p : Function) : Choice {
     return rotateChoice(p(playerPatterns, playerHistory));
 }
-
 
 /**
  * "Defeat Second-Guessing"
@@ -357,10 +367,10 @@ function randomPredict() {
  * E - do
  * 
  * R - this
- * @param {Array<{indication:Number, indicator:Array<Number>, playHistory:Number}>} patternArray uhhh the pattern array you silly goose
- * @param {Array<Number>} historyArray i want to perish
+ * @param patternArray uhhh the pattern array you silly goose
+ * @param historyArray i want to perish
  */
-function historyPredict(patternArray, historyArray) {
+function historyPredict(patternArray : Pattern[], historyArray : Choice[]) {
     let winIndex = null;
     let winLength = 0;
 
@@ -386,11 +396,11 @@ function historyPredict(patternArray, historyArray) {
 // #region Utilities
 /**
  * "Rotates" choice to be advantageous or disadvantageous
- * @param {number} c Choice to rotate
- * @param {boolean} dir Rotate to advantageous (default = true)?
+ * @param c Choice to rotate
+ * @param dir Rotate to advantageous (default = true)?
  * @returns Rotated choice
  */
-function rotateChoice(c, dir = true) {
+function rotateChoice(c : number, dir = true) {
     if (dir) {
         c = (c + 1) % 3;
     } else {
@@ -403,10 +413,10 @@ function rotateChoice(c, dir = true) {
 
 /**
  * Returns string representation of passed choice
- * @param {Number} c Choice to parse
+ * @param c Choice to parse
  * @returns Choice in string form ([Error] if invalid)
  */
-function choiceToString(c) {
+function choiceToString(c : Choice) {
     switch (c) {
         case Choice.Paper:
             return "Paper";
@@ -421,7 +431,7 @@ function choiceToString(c) {
 }
 
 // Compare function for the Array.sort() parameters.
-function patternCompare(a, b) {
+function patternCompare(a : Pattern, b : Pattern) {
     let aChoice = a.playHistory;
     let bChoice = b.playHistory;
     
@@ -439,23 +449,23 @@ function arraysEqual(a, b) {
 }
 
 /**
- * 
- * @param {Boolean | null | undefined} result Result to push.
+ * Push a new element signaling the outcome of a match
+ * @param result Result to push.
  */
-function pushOutcome(result) {
+function pushOutcome(result : Outcome) {
     let el = document.createElement("div");
     
     switch (result) {
-        case true:
+        case Outcome.CpuWin:
             el.classList.add("loss");
             break;
-        case false:
+        case Outcome.PlayerWin:
             el.classList.add("win");
             break;
-        case null:
+        case Outcome.Tie:
             el.classList.add("tie");
             break;
-        case undefined:
+        case Outcome.Error:
             el.classList.add("undecided");
             break;
         default:
@@ -469,9 +479,9 @@ function pushOutcome(result) {
 
 /**
  * 
- * @param {String} text Message to display.
+ * @param text Message to display.
  */
-function displayMessage(text) {
+function displayMessage(text : string) {
     jumbotron.innerHTML = text;
 }
 
@@ -482,7 +492,7 @@ function debugMessage(text = "") {
 function debugTimeoutMessage(text = "", afterText = "", time = 1000) {
     if (this.timeoutId) clearTimeout(this.timeoutId);
     
-    this.timeoutId = setTimeout(function() {
+    this.timeoutId = setTimeout(() => {
         debugMessage(afterText);
     }, time);
     
@@ -496,15 +506,15 @@ window.addEventListener("load", function() {
     jumbotron = document.getElementById("jumbotron");
     debug = document.getElementById("debug-readout");
 
-    document.getElementById("select-rock").addEventListener("click", function() {
+    document.getElementById("select-rock").addEventListener("click", () => {
         handleInput(Choice.Rock);
     });
     
-    document.getElementById("select-paper").addEventListener("click", function() {
+    document.getElementById("select-paper").addEventListener("click", () => {
         handleInput(Choice.Paper);
     });
     
-    document.getElementById("select-scissors").addEventListener("click", function() {
+    document.getElementById("select-scissors").addEventListener("click", () => {
         handleInput(Choice.Scissors);
     });
     
