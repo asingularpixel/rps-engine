@@ -449,7 +449,7 @@ function arraysEqual(a, b) {
 }
 
 /**
- * Push a new element signaling the outcome of a match
+ * Push a new element to the outcome bar signaling the outcome of a match.
  * @param result Result to push.
  */
 function pushOutcome(result : Outcome) {
