@@ -1,0 +1,28 @@
+# Grabbed from https://github.com/github/gitignore/blob/main/Node.gitignore and greatly trimmed. Thanks!
+
+# Logs
+logs
+*.log
+npm-debug.log*
+.pnpm-debug.log*
+
+# Diagnostic reports (https://nodejs.org/api/report.html)
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Dependency directories
+node_modules/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Optional npm cache directory
+.npm
+
+# Built js file (can't do because I don't want to pay for actions)
+# main.js
